@@ -33,7 +33,9 @@ data_exercise3_orth$time.orth.2 <- poly(data_exercise3_orth$time, 2, raw=FALSE)[
 chains <- 2
 iter <- 10000
 
-multiModel_stan_random_slope<-brms::brm(Score~PROGRAM+ time.orth.1 +time.orth.2+ PROGRAM*time.orth.1 + (1+time.orth.1+time.orth.2|Subject),data=data_exercise3_orth,
+multiModel_stan_random_slope<-brms::brm(Score~PROGRAM+ time.orth.1 +time.orth.2+ PROGRAM*time.orth.1 +PROGRAM*time.orth.2 +
+                                        (1+time.orth.1+time.orth.2|Subject),
+                                        data=data_exercise3_orth,
                                         iter =iter,
                                         warmup = iter/10,
                                         chains = chains)
