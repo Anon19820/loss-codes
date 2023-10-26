@@ -215,7 +215,7 @@ legend("topright",
 dev.off()
 
 png(paste0(path_files,"plots/Correlation_Probability.png"),  width = 7, height = 7, units = 'in',res = 250)
-plot(dens_1,xlim = c(-1,1), ylim = c(0,6), type = "l", main  = "Partial Correlation Distributions",xlab = "Correlation")
+plot(dens_corr_1,xlim = c(-1,1), ylim = c(0,6), type = "l", main  = "Partial Correlation Distributions",xlab = "Correlation")
 for(i in 2:num_corr){
   temp_dens <- get(paste0("dens_corr_",i))
   lines(temp_dens$x,temp_dens$y,col = i)
