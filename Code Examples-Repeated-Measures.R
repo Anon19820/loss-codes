@@ -1,5 +1,5 @@
 
-list.of.packages <- need<-c("ggplot2","dplyr","tidyr", "Ryacas", "brms", "stringr" ) #needed libraries
+list.of.packages <- need<-c("ggplot2","dplyr","tidyr", "brms", "stringr", "posterior", "ggmcmc" ) #needed libraries
 
 res <- lapply(list.of.packages, require, character.only = TRUE)
   not.loaded <-   list.of.packages[which(sapply(res, unlist) ==F)]
@@ -9,11 +9,11 @@ res <- lapply(list.of.packages, require, character.only = TRUE)
   if(length(not.installed)) lapply(not.installed, require, character.only = TRUE)
   
   #path_files <- #Define working directory
-  
-
-source(paste0(path_files,"helper functions.R"))
+  path_files <- "~/Expert Opinion - General/"
+  source(paste0(path_files,"helper functions.R"))
 
 #Load Data;
+
 
 
 data_exercise <- read.delim(paste0(path_files,"exercise.txt"),sep = " ")
@@ -64,10 +64,13 @@ unique_index <-as.numeric(rownames(unique(data_exercise3[ ,-c(2,4)])))
 data.stan2 <- data.stan
 data.stan2$pred_mat <- data.stan$X[unique_index,-1]
 data.stan2$n_pred <- nrow(data.stan2$pred_mat)
-X_expert <- data.stan$X[index_vec[2],2:7,drop = F]-data.stan$X[index_vec[1],2:7,drop = F]
+
+X_expert <- data.stan$X[index_vec[2],2:ncol(data.stan$X),drop = F]-data.stan$X[index_vec[1],2:ncol(data.stan$X),drop = F]
 X_expert<- apply(X_expert,c(1,2),function(x){if(x <1e-15){x=0}else{x=x} })
 data.stan2$X_expert <- X_expert
 data.stan2$par_expert <- matrix(c(2.5,1.5), nrow= 1, ncol = 2)
+data.stan2$par_expert <- matrix(c(0.5,0.5), nrow= 1, ncol = 2)
+
 #data.stan2$prior_only <- 1 #0 if including data
 
 #The default prior for population-level effects (including monotonic and category specific effects) is an improper flat prior over the reals.
@@ -189,6 +192,21 @@ model_stan_custom2 <- rstan::stan_model(model_code = model_test) # compilation
 
 model_rep_meas2 <- rstan::sampling(model_stan_custom2, data.stan2, chains = chains, 
                                    iter = iter, warmup = iter/10, thin =1, cores = 1 )
+
+
+
+pars_eval <- rstan::extract(model_rep_meas2, pars = c("b", "Intercept","sigma", "mu_diff"), permuted = FALSE)
+
+posterior_array <- posterior::as_draws_array(pars_eval)
+
+posterior_summary<- summarize_draws(posterior_array)
+
+ggmcmc(ggs(model_rep_meas2, family  = "b|sigma|mu_diff"), 
+       plot = c("histogram", "density", "traceplot", "running", "compare_partial", 
+                "Rhat", "ggs_effective"),
+           file = paste0(path_files,"plots/Regression Model Diagnostics.pdf"))
+
+
 
 #Some plots to assess convergence
 #traceplot(model_rep_meas2, pars = "b", inc_warmup = TRUE)

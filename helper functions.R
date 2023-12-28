@@ -1,4 +1,5 @@
 ## Functions for MNV Samples
+if(FALSE){
 
 gen_symb_mats <- function(dim_1 = NULL, sd_vec = NULL, cov = F, return_Ryacas = T ){
   
@@ -125,11 +126,14 @@ gen_pd_corr_par<- function(p_concord,corr_row_index,corr_col_index, mu_length, c
 }
 
 
+
 tmpfun <- get("[.yac_symbol", envir = asNamespace("Ryacas"))
 environment(`[.yac_symbol`) <- environment(tmpfun)
 attributes(`[.yac_symbol`) <- attributes(tmpfun)
 assignInNamespace("[.yac_symbol", `[.yac_symbol`, ns="Ryacas") 
 
+`%**%` <- Ryacas:::`%*%`
+}
 
 dinvgamma <-function (x, shape, rate = 1, scale = 1/rate, log = FALSE){
   if (missing(rate) && !missing(scale)) 
@@ -239,7 +243,7 @@ hyper_norm_gamma <- function(vals, probs, sample_size, plot_marg = FALSE){
   return(c(mu=mu,scale=scale,alpha =a,beta=b))
   
 }
-`%**%` <- Ryacas:::`%*%`
+
 `%!in%` = Negate(`%in%`)
 
 

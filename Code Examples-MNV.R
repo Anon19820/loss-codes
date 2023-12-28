@@ -1,33 +1,29 @@
 
-list.of.packages <- need<-c("ggplot2", "conflicted","rootSolve", "rstan","optimx","mvtnorm","Ryacas") #needed libraries
+list.of.packages <- need<-c("ggplot2", "rstan","optimx","mvtnorm", "posterior", "ggmcmc") #needed libraries
 res <- lapply(list.of.packages, require, character.only = TRUE)
 
-  not.loaded <-   list.of.packages[which(sapply(res, unlist) ==F)]
-  not.installed <-   not.loaded
-  #load the packages
-  if(length(not.installed)) install.packages(not.installed)
-  if(length(not.installed)) lapply(not.installed, require, character.only = TRUE)
+not.loaded <-   list.of.packages[which(sapply(res, unlist) ==F)]
+not.installed <-   not.loaded
+#load the packages
+if(length(not.installed)) install.packages(not.installed)
+if(length(not.installed)) lapply(not.installed, require, character.only = TRUE)
   
-  #path_files <- #Define working directory
-  
+#path_files <- #Define working directory
+path_files <- "~/Expert Opinion - General/"
 source(paste0(path_files,"helper functions.R"))
 
-
-
-
-conflict_prefer("filter", "dplyr")
-conflict_prefer("mutate", "dplyr")
-conflict_prefer("footnote", "kableExtra")
-conflict_prefer("rename", "dplyr")
-conflict_prefer("filter", "dplyr")
-conflict_prefer("summarize", "dplyr")
-conflict_prefer("summarise", "plyr")
-conflict_prefer("arrange", "dplyr")
-conflict_prefer("ar", "brms")
-conflict_prefer("diag", "base")
-conflict_prefer("extract", "rstan")
-conflict_prefer("%*%", "base")
-source(paste0(path_files,"helper functions.R"))
+# conflict_prefer("filter", "dplyr")
+# conflict_prefer("mutate", "dplyr")
+# conflict_prefer("footnote", "kableExtra")
+# conflict_prefer("rename", "dplyr")
+# conflict_prefer("filter", "dplyr")
+# conflict_prefer("summarize", "dplyr")
+# conflict_prefer("summarise", "plyr")
+# conflict_prefer("arrange", "dplyr")
+# conflict_prefer("ar", "brms")
+# conflict_prefer("diag", "base")
+# conflict_prefer("extract", "rstan")
+# conflict_prefer("%*%", "base")
 
 
 
@@ -43,7 +39,6 @@ sample_size <-10
 elicited_vals <- t(apply(cbind(mu_vec,sd_vec),1, function(x){qnorm(quantile_probs,x[1], x[2])}))
 hyperprior_mat<- t(apply(elicited_vals,1,  function(x){hyper_norm_gamma(x, quantile_probs,sample_size)}))
 
-
 n_corr_param <- length(mu_vec)*(length(mu_vec)-1)/2
 
 #Median is invariant to transformation (see with n = odd number so that median is unique)
@@ -52,7 +47,7 @@ median_concord <- c(0.60, 0.25, 0.4, rep(0.5,3))
 z_concord_transform <- atanh(sin(2*pi*(median_concord/2 -0.25))) 
 se_z_concord <- 1/sqrt(sample_size-3) #assume to be equal for all correlations
 
-
+if(FALSE){
 quantile((asin(tanh(rnorm(100000,z_concord_transform[2], se_z_concord)))/pi)+0.5, probs = c(0.025,0.975))
 
 symb_mat <- gen_symb_mats(dim_1 = length(mu_vec), return_Ryacas = F)
@@ -72,10 +67,11 @@ concord_mat<- cbind(corr_row_index,corr_col_index, median_concord)
 
 seq_prob <- seq(0,1, by = 0.01)
 
-for(i in 1:length(median_concord)){
+for(i in 1:4){
   gen_pd_corr_par(median_concord,corr_row_index,corr_col_index, mu_length = length(mu_vec), i,  plot_roots = F)
 }
 
+}
 model_stan <- "
 
 functions {
@@ -193,6 +189,23 @@ stan_res  <- rstan::extract(model_MVN, pars = c('concord_vector',"corr_vector", 
 stan_res_concord  <- rstan::extract(model_MVN, pars = c('concord_vector')) 
 
 
+stan_res_array  <- rstan::extract(model_MVN, pars = c('concord_vector',"corr_vector"), permuted = FALSE) 
+
+posterior_array <- posterior::as_draws_array(stan_res_array)
+
+posterior_summary<- summarize_draws(posterior_array)
+
+ggmcmc(ggs(model_MVN, family  = 'concord_vector|corr_vector'), 
+       plot = c("histogram", "density", "traceplot", "running", "compare_partial", 
+                "Rhat", "ggs_effective"),
+       file = paste0(path_files,"plots/MVN Diagnostics.pdf"))
+
+
+# mcmc_list <- As.mcmc.list(model_MVN, pars = c('concord_vector'), include = TRUE)
+# for(i in 1:num_corr){
+#   print(rstan::Rhat(cbind(mcmc_list[[1]][,i],mcmc_list[[2]][,i])))
+# }
+
 for(i in 1:num_corr){
   assign(paste0("dens_",i),density(stan_res$concord_vector[,i]) )
   assign(paste0("dens_corr_",i),density(stan_res$corr_vector[,i]) )
@@ -215,7 +228,7 @@ legend("topright",
 dev.off()
 
 png(paste0(path_files,"plots/Correlation_Probability.png"),  width = 7, height = 7, units = 'in',res = 250)
-plot(dens_corr_1,xlim = c(-1,1), ylim = c(0,6), type = "l", main  = "Partial Correlation Distributions",xlab = "Correlation")
+plot(dens_corr_1,xlim = c(-1,1), ylim = c(0,3), type = "l", main  = "Partial Correlation Distributions",xlab = "Correlation")
 for(i in 2:num_corr){
   temp_dens <- get(paste0("dens_corr_",i))
   lines(temp_dens$x,temp_dens$y,col = i)
